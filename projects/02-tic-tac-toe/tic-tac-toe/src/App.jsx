@@ -3,11 +3,10 @@ import { useState } from 'react'
 import WinnerModal from './components/WinnerModal.jsx'
 import Square from './components/Square.jsx'
 import './App.css'
+import { TURNO } from './constants.js'
+import { checkWinnerFrom, checkEndGame } from './logic/board.js'
+import { saveGameToStorage, resetGameStorage } from './storage/index.js'
 
-const TURNO = {
-  X: 'X',
-  O: 'O'
-}
 
 export default function App() {
   const [board, setBoard] = useState(Array(9).fill(null))
@@ -18,38 +17,12 @@ export default function App() {
     setBoard(Array(9).fill(null))
     setTurn(TURNO.X)
     setWinner(null)
+
+    resetGameStorage()
+
   }
 
-
-  const WINNER_COMBOS = [
-    [0, 1, 2],
-    [3, 4, 5],
-    [6, 7, 8],
-    [0, 3, 6],
-    [1, 4, 7],
-    [2, 5, 8],
-    [0, 4, 8],
-    [2, 4, 6]
-  ]
-
-  const checkWinner = (boardToCheck) => {
-    // revisamos todas las combinaciones ganadoras
-    // para ver si X u O ganó
-    for (const combo of WINNER_COMBOS) {
-      const [a, b, c] = combo
-      if (
-        boardToCheck[a] &&
-        boardToCheck[a] === boardToCheck[b] &&
-        boardToCheck[a] === boardToCheck[c]
-      ) {
-        return boardToCheck[a]
-      }
-    }
-    // si no hay ganador
-    return null
-  }
-
-  const handleTurn = (index) => {
+  const updateBoard = (index) => {
     if (board[index] || winner) return
     if (board[index] === null) {
       const newBoard = [...board]
@@ -57,10 +30,17 @@ export default function App() {
       setBoard(newBoard)
       const newTurn = (turn === TURNO.X) ? TURNO.O : TURNO.X
       setTurn(newTurn)
-      const newWinner = checkWinner(newBoard)
+      // guardar aqui partida
+      saveGameToStorage({
+        board: newBoard,
+        turn: newTurn
+      })
+      const newWinner = checkWinnerFrom(newBoard)
       if (newWinner) {
         confetti()
         setWinner(newWinner)
+      } else if (checkEndGame(newBoard)) {
+        setWinner(false)
       }
     }
   }
@@ -76,27 +56,30 @@ export default function App() {
           {
             board.map((value, index) => {
               return (
-                <div
+                <Square
                   className='square'
                   key={index}
-                  onClick={() => handleTurn(index)}
+                  updateBoard={updateBoard}
+                  index={index}
                 >
-                  {board[index]}
-                </div>
+                  {value}
+                </Square>
               )
             })
           }
         </div>
       </div>
       <div className='turnos'>
-        <div
-          className={`square ${(turn === TURNO.X) ? 'is-selected' : ''}`}
+        <Square
+          isSelected={turn === TURNO.X}
         >
           {TURNO.X}
-        </div>
-        <div className={`square ${(turn === TURNO.O) ? 'is-selected' : ''}`} >
+        </Square>
+        <Square
+          isSelected={turn === TURNO.O}
+        >
           {TURNO.O}
-        </div>
+        </Square>
       </div >
       <WinnerModal resetGame={resetGame} winner={winner} />
     </>
